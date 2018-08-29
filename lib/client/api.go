@@ -117,18 +117,21 @@ type Config struct {
 	HostPort int
 
 	// ProxySSHHost is host or IP of the SSH proxy. It is derived from either
-	// the --proxy flag or from the value the proxy advertises in public_addr.
+	// the --proxy flag or from the value the proxy advertises in ssh_public_addr.
 	ProxySSHHost string
 
 	// ProxySSHPort is the port to use to connect to the SSH proxy. It is
 	// derived from either the --proxy flag or from the value the proxy
-	// advertises in listen_addr.
+	// advertises ssh_public_addr or listen_addr.
 	ProxySSHPort int
 
-	// ProxyWebHost is host or IP of the web proxy.
+	// ProxyWebHost is host or IP of the web proxy. It is derived from either
+	// the --proxy flag or from the value the proxy advertises in public_addr.
 	ProxyWebHost string
 
-	// ProxyWebPort is the port to use to connect to the web proxy.
+	// ProxyWebPort is the port to use to connect to the web proxy. It is
+	// derived from either the --proxy flag or from the value the proxy
+	// advertises in public_addr.
 	ProxyWebPort int
 
 	// KubeProxyAddr is a kubernetes proxy address in host:port format
@@ -487,6 +490,8 @@ func (c *Config) SaveProfile(profileDir string, profileOptions ...ProfileOptions
 	if c.ProxyWebHost == "" {
 		return nil
 	}
+
+	// The profile is saved to a directory with the name of the proxy web endpoint.
 	profileDir = FullProfilePath(profileDir)
 	profilePath := path.Join(profileDir, c.ProxyWebHost) + ".yaml"
 
@@ -519,7 +524,7 @@ func (c *Config) SaveProfile(profileDir string, profileOptions ...ProfileOptions
 // ParseProxyHost parses the proxyHost string and updates the config.
 //
 // Format of proxyHost string:
-//   proxy_host:<https_proxy_port>,<ssh_proxy_port>
+//   proxy_web_addr:<proxy_web_port>,<proxy_ssh_portt>
 func (c *Config) ParseProxyHost(proxyHost string) error {
 	host, port, err := net.SplitHostPort(proxyHost)
 	if err != nil {
@@ -1581,7 +1586,7 @@ func (tc *TeleportClient) applyProxySettings(proxySettings ProxySettings) error 
 		tc.KubeProxyAddr = fmt.Sprintf("%s:%d", tc.ProxyWebHost, defaults.KubeProxyListenPort)
 	}
 
-	// The hostname of the SSH proxy comes from public_addr.
+	// Read in settings for HTTP endpoint of the proxy.
 	if proxySettings.SSH.PublicAddr != "" {
 		addr, err := utils.ParseAddr(proxySettings.SSH.PublicAddr)
 		if err != nil {
@@ -1589,9 +1594,19 @@ func (tc *TeleportClient) applyProxySettings(proxySettings ProxySettings) error 
 				"failed to parse value received from the server: %q, contact your administrator for help",
 				proxySettings.SSH.PublicAddr)
 		}
-		tc.ProxySSHHost = addr.Host()
+		tc.ProxyWebHost = addr.Host()
+		tc.ProxyWebPort = addr.Port(defaults.HTTPListenPort)
+
+		// Update local agent (that reads/writes to ~/.tsh) with the new address
+		// of the web proxy. This will control where the keys are stored on disk
+		// after login.
+		tc.localAgent.UpdateProxyHost(addr.Host())
 	}
-	// The port of the SSH proxy comes from listen_addr.
+	// Read in settings for the SSH endpoint of the proxy.
+	//
+	// If listen_addr is set, take host from ProxyWebHost and port from what
+	// was set. This is to maintain backward compatibility when Teleport only
+	// supported public_addr.
 	if proxySettings.SSH.ListenAddr != "" {
 		addr, err := utils.ParseAddr(proxySettings.SSH.ListenAddr)
 		if err != nil {
@@ -1599,6 +1614,18 @@ func (tc *TeleportClient) applyProxySettings(proxySettings ProxySettings) error 
 				"failed to parse value received from the server: %q, contact your administrator for help",
 				proxySettings.SSH.ListenAddr)
 		}
+		tc.ProxySSHHost = tc.ProxyWebHost
+		tc.ProxySSHPort = addr.Port(defaults.SSHProxyListenPort)
+	}
+	// If ssh_public_addr is set, override settings from listen_addr.
+	if proxySettings.SSH.SSHPublicAddr != "" {
+		addr, err := utils.ParseAddr(proxySettings.SSH.SSHPublicAddr)
+		if err != nil {
+			return trace.BadParameter(
+				"failed to parse value received from the server: %q, contact your administrator for help",
+				proxySettings.SSH.ListenAddr)
+		}
+		tc.ProxySSHHost = addr.Host()
 		tc.ProxySSHPort = addr.Port(defaults.SSHProxyListenPort)
 	}
 

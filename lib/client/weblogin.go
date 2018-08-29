@@ -314,8 +314,11 @@ type SSHProxySettings struct {
 	// connections on.
 	ListenAddr string `json:"listen_addr,omitempty"`
 
-	// PublicAddr is the public address the SSH proxy is accessible at.
+	// PublicAddr is the public address of the HTTP proxy.
 	PublicAddr string `json:"public_addr,omitempty"`
+
+	// SSHPublicAddr is the public address of the SSH proxy.
+	SSHPublicAddr string `json:"ssh_public_addr,omitempty"`
 }
 
 // PingResponse contains the form of authentication the auth server supports.

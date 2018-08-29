@@ -881,8 +881,11 @@ func (i *TeleInstance) NewUnauthenticatedClient(cfg ClientConfig) (tc *client.Te
 		KeysDir:            keyDir,
 		SiteName:           cfg.Cluster,
 		ForwardAgent:       cfg.ForwardAgent,
+		ProxyWebHost:       proxyHost,
+		ProxyWebPort:       proxyWebPort,
+		ProxySSHHost:       proxyHost,
+		ProxySSHPort:       proxySSHPort,
 	}
-	cconf.SetProxy(proxyHost, proxyWebPort, proxySSHPort)
 
 	return client.NewClient(cconf)
 }

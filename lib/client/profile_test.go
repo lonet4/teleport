@@ -31,9 +31,10 @@ var _ = check.Suite(&ProfileTestSuite{})
 
 func (s *ProfileTestSuite) TestEverything(c *check.C) {
 	p := &ClientProfile{
-		ProxyHost:      "proxy",
-		ProxySSHPort:   3023,
+		ProxyWebHost:   "proxy",
 		ProxyWebPort:   3088,
+		ProxySSHHost:   "proxy",
+		ProxySSHPort:   3023,
 		Username:       "testuser",
 		ForwardedPorts: []string{"8000:example.com:8000"},
 	}
