@@ -27,7 +27,6 @@ func main() {
 	// using the table:
 	t.WriteTo(os.Stdout)
 }
-
 */
 
 package asciitable
@@ -36,6 +35,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"text/tabwriter"
 )
 
 type column struct {
@@ -71,18 +71,48 @@ func MakeHeadlessTable(columnCount int) Table {
 
 // Body returns the fully formatted table body as a buffer
 func (t *Table) Body() *bytes.Buffer {
-	var (
-		padding string
-		buf     bytes.Buffer
-	)
+	var buffer bytes.Buffer
+
+	writer := tabwriter.NewWriter(&buffer, 5, 0, 1, ' ', 0)
 	for _, row := range t.rows {
-		for columnIndex, cell := range row {
-			padding = strings.Repeat(" ", t.columns[columnIndex].width-len(cell)+1)
-			fmt.Fprintf(&buf, "%s%s", cell, padding)
+		var rowi []interface{}
+		for _, cell := range row {
+			rowi = append(rowi, cell)
 		}
-		fmt.Fprintln(&buf, "")
+
+		template := strings.Repeat("%v\t", len(row))
+		fmt.Fprintf(writer, template+"\n", rowi...)
 	}
-	return &buf
+	writer.Flush()
+
+	return &buffer
+
+	//fmt.Fprintln(w, "crazy-token\tProxy,Node\tnever\t")
+
+	//w.Init(os.Stdout, 5, 0, 1, ' ', 0)
+	//header1 := "Token"
+	//header2 := "Type"
+	//header3 := "Expiry Time (UTC)"
+	//fmt.Fprintln(w, "%v\t%v\t%v\t", header1, header2, header3)
+	//fmt.Fprintln(w, "%v\t%v\t%v\t", strings.Repeat("-", len(header1)), strings.Repeat("-", len(header1))
+	//fmt.Fprintln(w, "1d29f3c2965e9115f75a0ebc4f26ae35\ttrusted_cluster\t20 Aug 18 19:06 UTC\t")
+	//fmt.Fprintln(w, "crazy-token\tProxy,Node\tnever\t")
+	//fmt.Fprintln(w)
+	//w.Flush()
+
+	//var (
+	//	padding string
+	//	buf     bytes.Buffer
+	//)
+	//for _, row := range t.rows {
+	//	for columnIndex, cell := range row {
+	//		padding = strings.Repeat(" ", t.columns[columnIndex].width-len(cell)+1)
+	//		fmt.Fprintf(&buf, "%s%s", cell, padding)
+	//	}
+	//	fmt.Fprintln(&buf, "")
+	//}
+	//return &buf
+
 }
 
 // Header returns the fully formatted header as a buffer

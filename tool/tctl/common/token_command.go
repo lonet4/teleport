@@ -18,6 +18,7 @@ package common
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/gravitational/kingpin"
@@ -84,8 +85,12 @@ func (c *TokenCommand) List(client auth.ClientI) error {
 		fmt.Println("No active tokens found.")
 		return nil
 	}
+
+	// Sort by expire time.
+	sort.Slice(tokens, func(i, j int) bool { return tokens[i].Expires.Unix() < tokens[j].Expires.Unix() })
+
 	tokensView := func() string {
-		table := asciitable.MakeTable([]string{"Token", "Role", "Expiry Time (UTC)"})
+		table := asciitable.MakeTable([]string{"Token", "Type", "Expiry Time (UTC)"})
 		for _, t := range tokens {
 			expiry := "never"
 			if t.Expires.Unix() > 0 {
